@@ -1,0 +1,88 @@
+name: Update version in deployments
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment-path:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      old-version:
+        required: true
+        type: string
+      repository:
+        required: true
+        type: string
+      body:
+        required: false
+        type: string
+  workflow_call:
+    secrets:
+      REPO_FULL_ACCESS_ORG:
+        required: true
+    inputs:
+      deployment-path:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      old-version:
+        required: true
+        type: string
+      repository:
+        required: true
+        type: string
+      body:
+        required: false
+        type: string
+
+permissions:
+    contents: read
+    pull-requests: write
+
+jobs:
+  update_version:
+    name: Update version in deployments
+    runs-on: linux:latest
+    steps:
+      # Clone deployments repo
+      - uses: actions/checkout@v4
+        name: Checkout source
+        with:
+          repository: "FamilySync/deployments"
+          ref: "main"
+          token: ${{ secrets.REPO_FULL_ACCESS_ORG }}
+          fetch-depth: 0
+
+      # Update specific deployment file
+      - name: Debug log
+        run: |
+          echo "Update ${{ inputs.deployment-path }} to ${{ inputs.version}}"
+
+    # Create new branch, commit changes, push changes
+      - name: Update specific deployment version
+        run: |
+          sed -i 's/\(.*\)tag: ".*/\1tag: "${{ inputs.version }}"/g' ${{ inputs.deployment-path }}
+
+    # Create pull request from branch to main
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.REPO_FULL_ACCESS_ORG }}
+          committer: GitHub <noreply@github.com>
+          author: FamilySync Bot <familysync-bot@users.noreply.github.com>
+          signoff: false
+          commit-message: "chore: bump image: ${{ inputs.repository }} to ${{ inputs.version }}"
+          delete-branch: true
+          draft: false
+          title: "Bump ${{ inputs.repository }} from ${{ inputs.old-version }} to ${{ inputs.version }}"
+          base: main
+          branch: "feature/bump-${{ inputs.repository }}" # Version is left out, to ensure an existing branch is used (PR is updated if present)
+          labels: |
+            bump
+            automated pr
+          team-reviewers: FamilySync/members
+          body: ${{ inputs.body }}

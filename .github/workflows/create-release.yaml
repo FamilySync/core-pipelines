@@ -1,0 +1,149 @@
+name: Generate Github release
+
+on:
+  workflow_call:
+    inputs:
+      new-version:
+        required: true
+        type: string
+      tag-prefix:
+        required: true
+        type: string
+      deployment-path:
+        required: true
+        type: string
+      repository:
+        required: true
+        type: string
+    secrets:
+      ORG_FULL_ACCESS_TOKEN:
+        required: true
+      
+jobs:
+  get-last-release:
+    runs-on: linux:latest
+    name: Get last released tag
+    outputs:
+      latestVersion:  ${{ steps.extract-latest-version.outputs.latestVersion }}
+    steps:
+    # Clone deployments repo
+    - uses: actions/checkout@v4
+      name: Checkout source
+      with:
+        repository: "FamilySync/deployments"
+        ref: "main"
+        token: ${{ secrets.REPO_FULL_ACCESS_ORG }}
+    # Get latest tag from deployments repo
+    - run: |
+        tag=$(sed -n --regexp-extended 's/[ ]*tag: "(.*?)"/\1/p' ${{inputs.deployment-path}} | tr -d '\n')
+        echo $tag
+        echo "latestVersion=$tag" >> $GITHUB_OUTPUT
+      id: extract-latest-version
+
+  generate-releasenotes:
+    name: Generate releasenotes
+    runs-on: linux:latest
+    needs: [get-last-release]
+    outputs:
+      changelog: ${{ steps.releasenotes.outputs.changelog }}
+    steps:
+    - name: Generate releasenotes
+      id: releasenotes
+      uses: mikepenz/release-changelog-builder-action@v4 # Required for the action to find the configuration file
+      with:
+        fromTag: ${{ inputs.tag-prefix }}${{ needs.get-last-release.outputs.latestVersion }}
+        toTag: ${{ inputs.tag-prefix }}${{ inputs.new-version }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetchReviewers: true
+        configurationJson: |
+          {
+            "template": "### Changes from: #{{FROM_TAG}} to #{{TO_TAG}}\n\n ## Details\n\nChanged files: #{{CHANGED_FILES}}\nChangled lines: #{{CHANGES}}\nCommits: #{{COMMITS}}\nDiff: #{{RELEASE_DIFF}}\n\n#{{CHANGELOG}}\n\n ## Uncategorized\n\n #{{UNCATEGORIZED}}",
+            "pr_template": "- [# #{{NUMBER}}](#{{URL}}) #{{TITLE}}\n   - Author: #{{AUTHOR}}\n   - Approvers: #{{APPROVERS}}",
+            "categories": [
+              {
+                  "title": "## 🚀 Features",
+                  "labels": ["enhancement"]
+              },
+              {
+                  "title": "## 🐛 Fixes",
+                  "labels": ["bug"]
+              }, 
+              {
+                  "title": "## 📦 Dependencies",
+                  "labels": ["dependencies"]
+              }
+            ]
+          }
+        
+
+  generate-github-release-notes:
+    name: Generate release notes for Github release
+    runs-on: linux:latest
+    needs: [get-last-release]
+    outputs:
+      changelog: ${{ steps.releasenotes.outputs.changelog }}
+    steps:
+    - uses: actions/checkout@v4
+      name: Checkout source
+      with:
+        fetch-depth: 0
+    - name: Generate releasenotes
+      id: releasenotes
+      uses: mikepenz/release-changelog-builder-action@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetchReviewers: true
+        toTag: ${{ inputs.tag-prefix }}${{ inputs.new-version }}
+        configurationJson: |
+          {
+            "template": "### Changes from: #{{FROM_TAG}} to #{{TO_TAG}}\n\n ## Details\n\nChanged files: #{{CHANGED_FILES}}\nChangled lines: #{{CHANGES}}\nCommits: #{{COMMITS}}\nDiff: #{{RELEASE_DIFF}}\n\n#{{CHANGELOG}}\n\n ## Uncategorized\n\n #{{UNCATEGORIZED}}",
+            "pr_template": "- [# #{{NUMBER}}](#{{URL}}) #{{TITLE}}\n   - Author: #{{AUTHOR}}\n   - Approvers: #{{APPROVERS}}",
+            "categories": [
+              {
+                  "title": "## 🚀 Features",
+                  "labels": ["enhancement"]
+              },
+              {
+                  "title": "## 🐛 Fixes",
+                  "labels": ["bug"]
+              }, 
+              {
+                  "title": "## 📦 Dependencies",
+                  "labels": ["dependencies"]
+              }
+            ]
+          }
+
+  create-release: 
+    name: Create Github release
+    needs: [generate-github-release-notes]
+    runs-on: linux:latest
+    outputs:
+      url: ${{ steps.create-github-release.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout source
+        with:
+          fetch-depth: 0
+      - name: Create Github release
+        id: create-github-release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+          body: ${{ needs.generate-github-release-notes.outputs.changelog }}
+          tag_name: ${{ inputs.tag-prefix }}${{ inputs.new-version }}
+
+  update-deployment:
+    name: Update deployment
+    needs: [generate-releasenotes, get-last-release]
+    uses: familysync/core-pipelines/.github/workflows/update-deployments-repo.yaml@main
+    secrets: inherit
+    with:
+      deployment-path: ${{ inputs.deployment-path }}
+      version: ${{ inputs.new-version }}
+      old-version: ${{ needs.get-last-release.outputs.latestVersion }}
+      repository: ${{ inputs.repository }}
+      body: |
+        ${{ needs. generate-releasenotes.outputs.changelog }}

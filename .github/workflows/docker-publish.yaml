@@ -1,0 +1,85 @@
+name: Publish Docker container to Dockerhub
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        required: true
+        type: string
+      project:
+        required: true
+        type: string
+      deployment-path:
+        required: false # Set this to true when its implemented!
+        type: string
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
+      ORG_FULL_ACCESS_TOKEN:
+        required: true
+
+# Ensures that only one deploy task per "group" will run at a time.
+concurrency:
+  group: ${{ inputs.repository }}-${{ github.ref }} # Examples: "familysync/authentication-main"
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  statuses: write
+  packages: write
+  checks: write
+
+
+jobs:
+  discover:
+    uses: familysync/core-pipelines/.github/workflows/git-version.yaml@main
+    secrets: inherit
+
+  docker:
+    if: always() && !cancelled()
+    runs-on: linux:latest
+    needs: [discover]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Dockerhub login
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push container release
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          tags: |
+            ${{ inputs.repository }}:latest
+            ${{ inputs.repository }}:edge
+            ${{ inputs.repository }}:${{ needs.discover.outputs.version }}
+          build-args: |
+            version=${{ needs.discover.outputs.version }}
+
+      - name: Tag version
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          git tag ${{ needs.discover.outputs.version_tag }}
+          git push origin --tags
+
+
+  create-release:
+    if: always() && needs.docker.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && inputs.deployment-path
+    name: Create release
+    needs: [docker, discover]
+    uses: familysync/core-pipelines/.github/workflows/create-release.yaml@main
+    secrets: inherit
+    with:
+      new-version: ${{ needs.discover.outputs.version }}
+      tag-prefix: v
+      deployment-path: ${{ inputs.deployment-path }}
+      repository: ${{ inputs.repository }}
