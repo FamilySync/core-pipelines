@@ -21,7 +21,7 @@ on:
       
 jobs:
   get-last-release:
-    runs-on: linux:latest
+    runs-on: ubuntu-latest
     name: Get last released tag
     outputs:
       latestVersion:  ${{ steps.extract-latest-version.outputs.latestVersion }}
