@@ -46,7 +46,7 @@ permissions:
 jobs:
   update_version:
     name: Update version in deployments
-    runs-on: linux:latest
+    runs-on: ubuntu-latest
     steps:
       # Clone deployments repo
       - uses: actions/checkout@v4
