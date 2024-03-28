@@ -7,7 +7,7 @@ on:
 
 jobs:
   discover:
-    uses: FamilySync/core-pipelines/.github/workflows/git-version@main
+    uses: FamilySync/core-pipelines/.github/workflows/git-version.yaml@main
     secrets: inherit
     
   build-and-publish:
