@@ -1,7 +1,7 @@
-name: Build and Publish NuGet
-
 on:
   workflow_call:
+
+name: Build and Publish NuGet
 
 jobs:
   discover:
