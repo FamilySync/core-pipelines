@@ -7,7 +7,7 @@ on:
 
 jobs:
   discover:
-    uses: FamilySync/core-pipelines/.github/workflows/versioning@main
+    uses: FamilySync/core-pipelines/.github/workflows/git-version@main
     secrets: inherit
     
   build-and-publish:
@@ -41,7 +41,7 @@ jobs:
         DOTNET_ROOT: ${{ runner.tool_cache }}/dotnet
 
     - name: Tag version
-      if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       run: |
         git tag ${{ needs.discover.outputs.version_tag }}
         git push origin --tags

@@ -37,7 +37,7 @@ jobs:
             var release = "${{ steps.semver.outputs.version }}";
             var ref = "${{ github.ref }}";
 
-            if (ref == "refs/heads/master") {
+            if (ref == "refs/heads/main") {
               return release.substring(0, release.indexOf("-"));
             }
 
