@@ -6,8 +6,13 @@ on:
       - main
 
 jobs:
+  discover:
+    uses: FamilySync/core-pipelines/.github/workflows/versioning@main
+    secrets: inherit
+    
   build-and-publish:
     runs-on: ubuntu-latest
+    needs: discover
 
     steps:
     - uses: actions/checkout@v2
@@ -15,7 +20,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '8.0.x' # Replace with your desired .NET version
+        dotnet-version: '8.0.x' 
 
     - name: Restore dependencies
       run: dotnet restore
@@ -27,10 +32,16 @@ jobs:
       run: dotnet test --no-restore --verbosity normal
 
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --output ./nupkgs
+      run: dotnet pack --configuration Release --no-build -p:PackageVersion=${{ needs.discover.outputs.version }} --output /nupkgs
 
     - name: Publish NuGet Packages
       run: |
         find ./nupkgs -name "*.nupkg" -exec dotnet nuget push {} --source "github" --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }} \;
       env:
         DOTNET_ROOT: ${{ runner.tool_cache }}/dotnet
+
+    - name: Tag version
+      if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+      run: |
+        git tag ${{ needs.discover.outputs.version_tag }}
+        git push origin --tags
