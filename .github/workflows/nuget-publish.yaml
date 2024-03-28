@@ -1,38 +1,16 @@
 name: Build and Publish NuGet
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
 
 jobs:
-  check-for-sln:
-    runs-on: ubuntu-latest
-    outputs:
-      has_sln: ${{ steps.check_sln.outputs.has_sln }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Check for .sln file
-        id: check_sln
-        run: |
-          echo "Checking for solution files..."
-          SLN_COUNT=$(find . -name "*.sln" | wc -l)
-          if [ "$SLN_COUNT" -gt 0 ]; then
-            echo "::set-output name=has_sln::true"
-          else
-            echo "::set-output name=has_sln::false"
-          fi
-
   discover:
     uses: FamilySync/core-pipelines/.github/workflows/git-version.yaml@main
     secrets: inherit
-    needs: check-for-sln
-    if: needs.check-for-sln.outputs.has_sln == 'true'
     
   build-and-publish:
     runs-on: ubuntu-latest
-    needs: check-for-sln
-    if: needs.check-for-sln.outputs.has_sln == 'true'
+    needs: discover
     steps:
       - uses: actions/checkout@v2
 
