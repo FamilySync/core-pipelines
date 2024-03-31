@@ -1,0 +1,4 @@
+name: Publish docker image to Dockerhub
+on:
+    workflow_call:
+        
