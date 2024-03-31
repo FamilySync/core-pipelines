@@ -59,6 +59,7 @@ jobs:
                             ${{ inputs.repository }}:${{ needs.discover.outputs.version }}
                         build-args: |
                             version=${{ needs.discover.outputs.version }}
+                            GITHUB_PAT=${{ secrets.ORG_FULL_ACCESS_TOKEN }}
 
             -   name: Build and push docker image pre-release
                 if: github.event_name == 'pull_request'
@@ -69,6 +70,7 @@ jobs:
                             ${{ inputs.repository }}:edge
                         build-args: |
                             version=${{ needs.discover.outputs.version }}
+                            GITHUB_PAT=${{ secrets.ORG_FULL_ACCESS_TOKEN }}
                 
             -   name: Tag version
                 if: github.ref == 'refs/heads/main' && github.event_name != 'pull-request'
