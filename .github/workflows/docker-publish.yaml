@@ -28,9 +28,6 @@ permissions:
     packages: write
     checks: write
 
-env: 
-    ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-
 jobs:
     discover:
         uses: FamilySync/core-pipelines/.github/workflows/git-version.yaml@main
@@ -47,8 +44,8 @@ jobs:
 
             -   name: Set env vars
                 run: |
-                    echo "::set-env name=NUGET_USERNAME::${{ vars.NUGET_USERNAME }}"
-                    echo "::set-env name=NUGET_TOKEN::${{ secrets.ORG_FULL_ACCESS_TOKEN }}"
+                    echo "NUGET_USERNAME=${{ vars.NUGET_USERNAME }}" >> $GITHUB_ENV
+                    echo "NUGET_TOKEN=${{ secrets.ORG_FULL_ACCESS_TOKEN }}" >> $GITHUB_ENV
 
             -   name: Configure dotnet
                 uses: actions/setup-dotnet@v4
