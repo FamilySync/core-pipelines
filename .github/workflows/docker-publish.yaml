@@ -11,7 +11,7 @@ on:
         secrets:
             DOCKERHUB_USERNAME:
                 required: true
-            DOCKERHUB_PASSWORD:
+            DOCKERHUB_TOKEN:
                 required: true
             REPO_FULL_ACCESS_ORG:
                 required: true
