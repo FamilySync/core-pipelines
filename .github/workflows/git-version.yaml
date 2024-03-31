@@ -50,9 +50,3 @@ jobs:
             var head_ref = "${{ github.head_ref }}";
 
             return split[0] + "rc" + split[1] + "-" + head_ref.replaceAll('/', '-');
-
-      - name: Echo semantic version
-        run: echo "Semantic version output: ${{ steps.semver.outputs.version}}"
-      - name: Echo final version
-        run: echo "Final version output: ${{ steps.version.outputs.result }}"
-
