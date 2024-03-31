@@ -73,7 +73,8 @@ jobs:
                             ${{ inputs.repository }}:${{ needs.discover.outputs.version }}
                         build-args: |
                             version=${{ needs.discover.outputs.version }}
-                            TOKEN=${{ secrets.ORG_FULL_ACCESS_TOKEN }}
+                            username=Greboh
+                            token=${{ secrets.ORG_FULL_ACCESS_TOKEN }}
 
             -   name: Build and push docker image pre-release
                 if: github.event_name == 'pull_request'
