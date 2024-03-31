@@ -45,7 +45,7 @@ jobs:
             -   name: Configure dotnet
                 uses: actions/setup-dotnet@v3
                 with:
-                    source-url: "https://nuget.pkg.github.com/FamilySync/index.json"
+                    source-url: ${{ vars.NUGET_FEED }}
                 env:
                     NUGET_AUTH_TOKEN: ${{ secrets.ORG_FULL_ACCESS_TOKEN}}
             
