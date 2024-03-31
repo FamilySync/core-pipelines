@@ -28,6 +28,9 @@ permissions:
     packages: write
     checks: write
 
+env: 
+    ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
 jobs:
     discover:
         uses: FamilySync/core-pipelines/.github/workflows/git-version.yaml@main
