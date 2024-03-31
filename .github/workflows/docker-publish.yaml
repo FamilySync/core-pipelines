@@ -1,4 +1,76 @@
 name: Publish docker image to Dockerhub
 on:
     workflow_call:
-        
+        inputs:
+            repository:
+                required: true
+                type: string
+            project:
+                required: true
+                type: string
+        secrets:
+            DOCKERHUB_USERNAME:
+                required: true
+            DOCKERHUB_PASSWORD:
+                required: true
+            REPO_FULL_ACCESS_ORG:
+                required: true
+
+# Only allow one deployment task to run at a time
+concurrency:
+    group: ${{ inputs.repository }}-${{ github.ref }} #Example: "familysync/identity-[branch]" / familysync/identity-main
+    cancel-in-progress: true
+
+permissions:
+    contents: write
+    pull-requests: write
+    statuses: write
+    packages: write
+    checks: write
+
+jobs:
+    discover:
+        uses: FamilySync/core-pipelines/.github/workflows/git-version.yaml@main
+        secrets: inherit
+    
+    docker:
+        if: always() && !cancelled()
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v4
+                with:
+                    fetch-depth: 0
+                    
+            -   name: Dockerhub login
+                uses: docker/login-action@v2
+                with:
+                    username: ${{ secrets.DOCKERHUB_USERNAME }}
+                    password: ${{ secrets.DOCKERHUB_TOKEN }}
+            
+            -   name: Build and push Docker image release
+                if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+                uses: docker/build-push-action@v4
+                with:
+                        push: true
+                        tags: |
+                            ${{ inputs.repository }}:latest
+                            ${{ inputs.repository }}:edge
+                            ${{ inputs.repository }}:${{ needs.discover.outputs.version }}
+                        build-args: |
+                            version=${{ needs.discover.outputs.version }}
+
+            -   name: Build and push docker image pre-release
+                if: github.event_name == 'pull_request'
+                uses: docker/build-push-action@v4
+                with:
+                        push: true
+                        tags: |
+                            ${{ inputs.repository }}:edge
+                        build-args: |
+                            version=${{ needs.discover.outputs.version }}
+                
+            -   name: Tag version
+                if: github.ref == 'refs/heads/main' && github.event_name != 'pull-request'
+                run: |
+                    git tag ${{ needs.discover.outputs.version_tag }}
+                    git push origin --tags
